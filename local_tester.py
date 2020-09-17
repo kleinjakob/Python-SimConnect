@@ -22,19 +22,28 @@ sm = SimConnect()
 aq = AircraftRequests(sm)
 ae = AircraftEvents(sm)
 
-atc_id = aq.find('ATC_ID')
+# Add a simple REPL, exposing the SimConnect Interface.
 
-print(atc_id.value)
+header = "SimConnect Test REPL"
+footer = "Closing now!"
 
-atc_id.value = b'OE-XXX'
+# Some Example definitions:
+T = ae.find("TOGGLE_PUSHBACK")
+H = ae.find("KEY_TUG_HEADING")
+S = ae.find("KEY_TUG_SPEED")
+def H2I(hdg):
+	return int((2**32-1)*hdg/360)
 
-while not sm.quit:
-	print("Alt=%f Lat=%f Lon=%f Kohlsman=%.2f" % (
-		aq.PositionandSpeedData.get('PLANE_ALTITUDE'),
-		aq.PositionandSpeedData.get('PLANE_LATITUDE'),
-		aq.PositionandSpeedData.get('PLANE_LONGITUDE'),
-		aq.FlightInstrumentationData.get('KOHLSMAN_SETTING_HG')
-	))
-	sleep(2)
+scope_vars = {"sm": sm, "aq": aq, "ae": ae, "T": T, "H": H, "S": S, "H2I": H2I}
+
+try:
+	import IPython
+except ImportError:
+	from code import InteractiveConsole
+	InteractiveConsole(locals=scope_vars).interact(header, footer)
+else:
+	print(header)
+	IPython.start_ipython(argv=[], user_ns=scope_vars)
+	print(footer)
 
 sm.exit()
