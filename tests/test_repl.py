@@ -28,13 +28,14 @@ header = "SimConnect Test REPL"
 footer = "Closing now!"
 
 # Some Example definitions:
+A = aq.find("ATC_ID")
 T = ae.find("TOGGLE_PUSHBACK")
 H = ae.find("KEY_TUG_HEADING")
 S = ae.find("KEY_TUG_SPEED")
 def H2I(hdg):
 	return int((2**32-1)*hdg/360)
 
-scope_vars = {"sm": sm, "aq": aq, "ae": ae, "T": T, "H": H, "S": S, "H2I": H2I}
+scope_vars = {"sm": sm, "aq": aq, "ae": ae, "A": A, "T": T, "H": H, "S": S, "H2I": H2I}
 
 try:
 	import IPython
