@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from SimConnect import *
 import logging
 from SimConnect.Enum import *
@@ -11,7 +13,7 @@ def signal_handler(sig, frame):
 	sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 LOGGER = logging.getLogger(__name__)
 LOGGER.info("START")
 # time holder for inline commands
