@@ -25,6 +25,17 @@ class SimConnect:
 		uEventID = event.uEventID
 		if uEventID == self.dll.EventID.EVENT_SIM_START:
 			LOGGER.info("SIM START")
+			self.running = True
+		if uEventID == self.dll.EventID.EVENT_SIM_STOP:
+			LOGGER.info("SIM Stop")
+			self.running = False
+		# Unknow whay not reciving
+		if uEventID == self.dll.EventID.EVENT_SIM_PAUSED:
+			LOGGER.info("SIM Paused")
+			self.paused = True
+		if uEventID == self.dll.EventID.EVENT_SIM_UNPAUSED:
+			LOGGER.info("SIM Unpaused")
+			self.paused = False
 
 	def handle_simobject_event(self, ObjData):
 		dwRequestID = ObjData.dwRequestID
@@ -57,6 +68,10 @@ class SimConnect:
 
 		LOGGER.warn(_exception)
 
+	def handle_state_event(self, pData):
+		print("I:", pData.dwInteger, "F:", pData.fFloat, "S:", pData.szString)
+
+
 	# TODO: update callbackfunction to expand functions.
 	def my_dispatch_proc(self, pData, cbData, pContext):
 		dwID = pData.contents.dwID
@@ -65,6 +80,10 @@ class SimConnect:
 		if dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_EVENT:
 			evt = cast(pData, POINTER(SIMCONNECT_RECV_EVENT)).contents
 			self.handle_id_event(evt)
+
+		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_SYSTEM_STATE:
+			state = cast(pData, POINTER(SIMCONNECT_RECV_SYSTEM_STATE)).contents
+			self.handle_state_event(state)
 
 		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_SIMOBJECT_DATA_BYTYPE:
 			pObjData = cast(
@@ -107,6 +126,8 @@ class SimConnect:
 		self.hSimConnect = HANDLE()
 		self.quit = 0
 		self.ok = False
+		self.running = False
+		self.paused = False
 		self.DEFINITION_POS = None
 		self.DEFINITION_WAYPOINT = None
 		self.my_dispatch_proc_rd = self.dll.DispatchProc(self.my_dispatch_proc)
@@ -120,11 +141,25 @@ class SimConnect:
 			)
 			if self.IsHR(err, 0):
 				LOGGER.debug("Connected to Flight Simulator!")
-				# Set up the data definition, but do not yet do anything with itd
 				# Request an event when the simulation starts
+
+				# The user is in control of the aircraft
 				self.dll.SubscribeToSystemEvent(
 					self.hSimConnect, self.dll.EventID.EVENT_SIM_START, b"SimStart"
 				)
+				# The user is navigating the UI.
+				self.dll.SubscribeToSystemEvent(
+					self.hSimConnect, self.dll.EventID.EVENT_SIM_STOP, b"SimStop"
+				)
+				# Request a notification when the flight is paused
+				self.dll.SubscribeToSystemEvent(
+					self.hSimConnect, self.dll.EventID.EVENT_SIM_PAUSED, b"Paused"
+				)
+				# Request a notification when the flight is un-paused.
+				self.dll.SubscribeToSystemEvent(
+					self.hSimConnect, self.dll.EventID.EVENT_SIM_UNPAUSED, b"Unpaused"
+				)
+
 				while self.ok is False:
 					self.run()
 		except OSError:
@@ -326,3 +361,10 @@ class SimConnect:
 			return True
 		else:
 			return False
+
+	def get_paused(self):
+		hr = self.dll.RequestSystemState(
+			self.hSimConnect,
+			self.dll.EventID.EVENT_SIM_PAUSED,
+			b"Sim"
+		)
