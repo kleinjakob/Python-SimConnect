@@ -3,6 +3,7 @@ from SimConnect import *
 from time import sleep
 import random
 
+
 app = Flask(__name__)
 
 # SIMCONNECTION RELATED STARTUPS
@@ -10,7 +11,7 @@ app = Flask(__name__)
 # Create simconnection
 sm = SimConnect()
 ae = AircraftEvents(sm)
-aq = AircraftRequests(sm)
+aq = AircraftRequests(sm, _time=10)
 
 # Create request holders
 
@@ -385,9 +386,9 @@ def set_datapoint(datapoint_name, index=None, value_to_use=None):
 	# This function actually does the work of setting the datapoint
 
 	if index is not None and ':index' in datapoint_name:
-		clas = aq._find(datapoint_name)
+		clas = aq.find(datapoint_name)
 		if clas is not None:
-			clas.obj(datapoint_name).setIndex(int(index))
+			clas.setIndex(int(index))
 
 	sent = False
 	if value_to_use is None:

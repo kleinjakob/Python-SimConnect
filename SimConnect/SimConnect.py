@@ -6,6 +6,8 @@ from .Enum import *
 from .Constants import *
 from .Attributes import *
 import os
+import threading
+
 _library_path = os.path.abspath(__file__).replace(".py", ".dll")
 
 LOGGER = logging.getLogger(__name__)
@@ -71,12 +73,10 @@ class SimConnect:
 	def handle_state_event(self, pData):
 		print("I:", pData.dwInteger, "F:", pData.fFloat, "S:", pData.szString)
 
-
 	# TODO: update callbackfunction to expand functions.
 	def my_dispatch_proc(self, pData, cbData, pContext):
+		# print("my_dispatch_proc")
 		dwID = pData.contents.dwID
-		self.pS = None
-
 		if dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_EVENT:
 			evt = cast(pData, POINTER(SIMCONNECT_RECV_EVENT)).contents
 			self.handle_id_event(evt)
@@ -159,18 +159,22 @@ class SimConnect:
 				self.dll.SubscribeToSystemEvent(
 					self.hSimConnect, self.dll.EventID.EVENT_SIM_UNPAUSED, b"Unpaused"
 				)
-
+				self.timerThread = threading.Thread(target=self._run)
+				self.timerThread.daemon = True
+				self.timerThread.start()
 				while self.ok is False:
-					self.run()
+					pass
 		except OSError:
 			LOGGER.debug("Did not find Flight Simulator running.")
 			exit(0)
 
-	def run(self):
-		time.sleep(.01)
-		self.dll.CallDispatch(self.hSimConnect, self.my_dispatch_proc_rd, None)
+	def _run(self):
+		while self.quit == 0:
+			self.dll.CallDispatch(self.hSimConnect, self.my_dispatch_proc_rd, None)
 
 	def exit(self):
+		self.quit = 1
+		self.timerThread.join()
 		self.dll.Close(self.hSimConnect)
 
 	def map_to_sim_event(self, name):
@@ -236,11 +240,12 @@ class SimConnect:
 
 	def get_data(self, _Request):
 		self.request_data(_Request)
-		self.run()
+		# self.run()
 		attemps = 0
 
 		while _Request.outData is None and attemps < 4:
-			self.run()
+			# self.run()
+			time.sleep(.01)
 			attemps += 1
 		if _Request.outData is None:
 			return False
@@ -369,6 +374,13 @@ class SimConnect:
 		else:
 			return False
 
+	def load_flight_plan(self, pln_path):
+		hr = self.dll.FlightPlanLoad(self.hSimConnect, pln_path.encode())
+		if self.IsHR(hr, 0):
+			return True
+		else:
+			return False
+
 	def save_flight(self, flt_path, flt_title, flt_description):
 		hr = self.dll.FlightSave(self.hSimConnect, flt_path.encode(), flt_title.encode(), flt_description.encode(), 0)
 		if self.IsHR(hr, 0):
@@ -382,3 +394,40 @@ class SimConnect:
 			self.dll.EventID.EVENT_SIM_PAUSED,
 			b"Sim"
 		)
+
+	#	not working
+	# def dic_to_flight(self, dic):
+	# 	data_folder = os.path.dirname(os.path.realpath(__file__))
+	# 	file_to_open = os.path.join(data_folder, "TEMP.FLT")
+	# 	if os.path.isfile(file_to_open):
+	# 		os.remove(file_to_open)
+	# 	with open(file_to_open, "w") as tempfile:
+	# 		for root in dic:
+	# 			tempfile.write("\n[%s]\n" % root)
+	# 			for member in dic[root]:
+	# 				tempfile.write("%s=%s\n" % (member, dic[root][member]))
+	# 	if os.path.isfile(file_to_open):
+	# 		self.load_flight(file_to_open)
+
+	def flight_to_dic(self):
+		data_folder = os.path.dirname(os.path.realpath(__file__))
+		file_to_open = os.path.join(data_folder, "TEMP.FLT")
+		if os.path.isfile(file_to_open):
+			os.remove(file_to_open)
+		self.save_flight(file_to_open, "Flight", "Supper Cool flight")
+		while not os.path.isfile(file_to_open):
+			pass
+		time.sleep(0.5)
+		dic = {}
+		index = ""
+		with open(file_to_open, "r") as tempfile:
+			for line in tempfile.readlines():
+				if line[0] == '[':
+					index = line[1:-2]
+					dic[index] = {}
+				else:
+					if index != "" and line != '\n':
+						temp = line.split("=")
+						dic[index][temp[0]] = temp[1].strip()
+		os.remove(file_to_open)
+		return dic
