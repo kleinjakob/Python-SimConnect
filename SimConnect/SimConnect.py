@@ -8,7 +8,7 @@ from .Attributes import *
 import os
 import threading
 
-_library_path = os.path.abspath(__file__).replace(".py", ".dll")
+_library_path = os.path.splitext(os.path.abspath(__file__))[0] + '.dll'
 
 LOGGER = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ class SimConnect:
 	def _run(self):
 		while self.quit == 0:
 			self.dll.CallDispatch(self.hSimConnect, self.my_dispatch_proc_rd, None)
-			time.sleep(.001)
+			time.sleep(.002)
 
 	def exit(self):
 		self.quit = 1
@@ -381,12 +381,34 @@ class SimConnect:
 		else:
 			return False
 
-	def save_flight(self, flt_path, flt_title, flt_description):
+	def save_flight(
+		self,
+		flt_path,
+		flt_title,
+		flt_description,
+		flt_mission_type='FreeFlight',
+		flt_mission_location='Custom departure',
+		flt_original_flight='',
+		flt_flight_type='NORMAL'):
 		hr = self.dll.FlightSave(self.hSimConnect, flt_path.encode(), flt_title.encode(), flt_description.encode(), 0)
-		if self.IsHR(hr, 0):
-			return True
-		else:
+		if not self.IsHR(hr, 0):
 			return False
+
+		dicp = self.flight_to_dic(flt_path)
+		if 'MissionType' not in dicp['Main']:
+			dicp['Main']['MissionType'] = flt_mission_type
+
+		if 'MissionLocation' not in dicp['Main']:
+			dicp['Main']['MissionLocation'] = flt_mission_location
+
+		if 'FlightType' not in dicp['Main']:
+			dicp['Main']['FlightType'] = flt_flight_type
+
+		if 'OriginalFlight' not in dicp['Main']:
+			dicp['Main']['OriginalFlight'] = flt_original_flight
+		self.dic_to_flight(dicp, flt_path)
+
+		return False
 
 	def get_paused(self):
 		hr = self.dll.RequestSystemState(
@@ -395,32 +417,20 @@ class SimConnect:
 			b"Sim"
 		)
 
-	#	not working
-	# def dic_to_flight(self, dic):
-	# 	data_folder = os.path.dirname(os.path.realpath(__file__))
-	# 	file_to_open = os.path.join(data_folder, "TEMP.FLT")
-	# 	if os.path.isfile(file_to_open):
-	# 		os.remove(file_to_open)
-	# 	with open(file_to_open, "w") as tempfile:
-	# 		for root in dic:
-	# 			tempfile.write("\n[%s]\n" % root)
-	# 			for member in dic[root]:
-	# 				tempfile.write("%s=%s\n" % (member, dic[root][member]))
-	# 	if os.path.isfile(file_to_open):
-	# 		self.load_flight(file_to_open)
+	def dic_to_flight(self, dic, fpath):
+		with open(fpath, "w") as tempfile:
+			for root in dic:
+				tempfile.write("\n[%s]\n" % root)
+				for member in dic[root]:
+					tempfile.write("%s=%s\n" % (member, dic[root][member]))
 
-	def flight_to_dic(self):
-		data_folder = os.path.dirname(os.path.realpath(__file__))
-		file_to_open = os.path.join(data_folder, "TEMP.FLT")
-		if os.path.isfile(file_to_open):
-			os.remove(file_to_open)
-		self.save_flight(file_to_open, "Flight", "Supper Cool flight")
-		while not os.path.isfile(file_to_open):
+	def flight_to_dic(self, fpath):
+		while not os.path.isfile(fpath):
 			pass
 		time.sleep(0.5)
 		dic = {}
 		index = ""
-		with open(file_to_open, "r") as tempfile:
+		with open(fpath, "r") as tempfile:
 			for line in tempfile.readlines():
 				if line[0] == '[':
 					index = line[1:-2]
@@ -429,5 +439,17 @@ class SimConnect:
 					if index != "" and line != '\n':
 						temp = line.split("=")
 						dic[index][temp[0]] = temp[1].strip()
-		os.remove(file_to_open)
 		return dic
+
+	def sendText(self, text, timeSeconds=5, TEXT_TYPE=SIMCONNECT_TEXT_TYPE.SIMCONNECT_TEXT_TYPE_PRINT_WHITE):
+		pyarr = bytearray(text.encode())
+		dataarray = (ctypes.c_char * len(pyarr))(*pyarr)
+		pObjData = cast(dataarray, c_void_p)
+		self.dll.Text(
+			self.hSimConnect,
+			TEXT_TYPE,
+			timeSeconds,
+			0,
+			sizeof(ctypes.c_double) * len(pyarr),
+			pObjData
+		)

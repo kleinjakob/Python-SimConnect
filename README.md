@@ -9,22 +9,43 @@ It also includes, as an example, "Cockpit Companion", a flask mini http server w
 
 Full documentation for this example can be found at [https://msfs2020.cc](https://msfs2020.cc) and it is included in a standalone repo here on Github as [MSFS2020-cockpit-companion](https://github.com/hankhank10/MSFS2020-cockpit-companion).
 
+
+## Mobiflight Simconnect events:
+
+Yes this supports the new [SimConnect commands that DocMoebiuz](https://forums.flightsimulator.com/t/full-g1000-control-now-with-mobiflight/348509) of [MobiFlight](https://www.mobiflight.com/en/index.html) developped. 
+A full list of [commands and install instructions](https://pastebin.com/fMdB7at2)
+
+At this time MobiFlight SimConnect commands are not include in the AircraftEvents class and as so the AircraftEvents.find() and AircraftEvents.get() will not work. You will need to pass the Event ID to a new Event class as the Example below shows.
+
+
+```py
+from SimConnect import *
+# Create SimConnect link
+sm = SimConnect()
+# Creat a function to call the MobiFlight AS1000_MFD_SOFTKEYS_3 event.
+Sk3 = Event(b'MobiFlight.AS1000_MFD_SOFTKEYS_3', sm)
+# Call the Event.
+Sk3()
+sm.exit()
+quit()
+```
+
 ## Python interface example
 
-````
+```py
 from SimConnect import *
 
 # Create SimConnect link
 sm = SimConnect()
-# Note the default _time is 2000 as to refreshed at 2s
+# Note the default _time is 2000 to be refreshed every 2 seconds
 aq = AircraftRequests(sm, _time=2000)
-# Use _time=ms where ms is the millsec to refresh data to cash.
-# setting ms to 0 will disable data cashing and allwas pull new data form sim.
-# There is still a timeout of 4 trys with a 10ms delay between checks. 
-# If no data is recived in 40ms the value will be set to -999999
-# Each Requests can be fine tuned by seting the time pram.
-# To find and set time out of cashed data to 200ms
+# Use _time=ms where ms is the time in milliseconds to cache the data.
+# Setting ms to 0 will disable data caching and always pull new data from the sim.
+# There is still a timeout of 4 tries with a 10ms delay between checks.
+# If no data is received in 40ms the value will be set to None
+# Each request can be fine tuned by setting the time param.
 
+# To find and set timeout of cached data to 200ms:
 altitude = aq.find("PLANE_ALTITUDE")
 altitude.time = 200
 
@@ -44,9 +65,9 @@ event_to_trigger()
 target_altitude = 15000
 event_to_trigger = ae.find("AP_ALT_VAR_SET_ENGLISH")  # Sets AP autopilot hold level
 event_to_trigger(target_altitude)
-sm.quit()
-exit()
-````
+sm.exit()
+quit()
+```
 
 ## HTTP interface example
 
@@ -108,20 +129,20 @@ Arguments to pass:
 
 Description: Triggers an event in the simulator
 
-## Runing SimConnect on other system.
+## Running SimConnect on a separate system.
 
 #### Note: At this time SimConnect can only run on Windows hosts.
 
-Creat a file called SimConnect.cfg in the same folder as your script.
+Create a file called SimConnect.cfg in the same folder as your script.
 #### Sample SimConnect.cfg:
-```
+```ini
 ; Example SimConnect client configurations
 [SimConnect]
 Protocol=IPv4
 Address=<ip of server>
 Port=500
 ```
-To enable the host running the sim to share over network, 
+To enable the host running the sim to share over network,
 
 add \<Address\>0.0.0.0\</Address\>
 
@@ -131,7 +152,7 @@ SimConnect.xml can be located at
 #### `%AppData%\Microsoft Flight Simulator\SimConnect.xml`
 
 #### Sample SimConnect.xml:
-```
+```xml
 <?xml version="1.0" encoding="Windows-1252"?>
 
 <SimBase.Document Type="SimConnect" version="1,0">
@@ -148,15 +169,20 @@ SimConnect.xml can be located at
     </SimConnect.Comm>
 ...
 ```
+## Notes:
+
+Python 64-bit is needed. You may see this Error if running 32-bit python:
+
+```OSError: [WinError 193] %1 is not a valid Win32 application```
+
+
 
 ## Events and Variables
 
-Below are links to the Microsoft documentation 
+Below are links to the Microsoft documentation
 
 [Function](https://docs.microsoft.com/en-us/previous-versions/microsoft-esp/cc526983(v=msdn.10))
 
 [Event IDs](https://docs.microsoft.com/en-us/previous-versions/microsoft-esp/cc526980(v=msdn.10))
 
 [Simulation Variables](https://docs.microsoft.com/en-us/previous-versions/microsoft-esp/cc526981(v=msdn.10))
-
-
