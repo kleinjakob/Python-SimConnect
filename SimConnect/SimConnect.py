@@ -98,6 +98,13 @@ class SimConnect:
 		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_EXCEPTION:
 			exc = cast(pData, POINTER(SIMCONNECT_RECV_EXCEPTION)).contents
 			self.handle_exception_event(exc)
+		
+		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_ASSIGNED_OBJECT_ID:
+			pObjData = cast(
+				pData, POINTER(SIMCONNECT_RECV_ASSIGNED_OBJECT_ID)
+			).contents
+			objectId = pObjData.dwObjectID
+			os.environ["SIMCONNECT_OBJECT_ID"] = str(objectId)
 
 		elif (dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_AIRPORT_LIST) or (
 			dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_WAYPOINT_LIST) or (
@@ -170,8 +177,11 @@ class SimConnect:
 
 	def _run(self):
 		while self.quit == 0:
-			self.dll.CallDispatch(self.hSimConnect, self.my_dispatch_proc_rd, None)
-			time.sleep(.002)
+			try:
+				self.dll.CallDispatch(self.hSimConnect, self.my_dispatch_proc_rd, None)
+				time.sleep(.002)
+			except OSError as err:
+        			print("OS error: {0}".format(err))
 
 	def exit(self):
 		self.quit = 1
@@ -342,7 +352,7 @@ class SimConnect:
 		Init.Airspeed = _Airspeed
 
 		if self.DEFINITION_POS is None:
-			self.DEFINITION_POS = self.new_def_id("DEFINITION_POS")
+			self.DEFINITION_POS = self.new_def_id()
 			err = self.dll.AddToDataDefinition(
 				self.hSimConnect,
 				self.DEFINITION_POS.value,
@@ -452,4 +462,21 @@ class SimConnect:
 			0,
 			sizeof(ctypes.c_double) * len(pyarr),
 			pObjData
+		)
+	
+	def createSimulatedObject(self, name, lat, lon, rqst, hdg=0, gnd=1, alt=0, pitch=0, bank=0, speed=0):
+		simInitPos = SIMCONNECT_DATA_INITPOSITION()
+		simInitPos.Altitude = alt
+		simInitPos.Latitude = lat
+		simInitPos.Longitude = lon
+		simInitPos.Pitch = pitch
+		simInitPos.Bank = bank
+		simInitPos.Heading = hdg
+		simInitPos.OnGround = gnd
+		simInitPos.Airspeed = speed
+		self.dll.AICreateSimulatedObject(
+		    self.hSimConnect,
+		    name.encode(),
+		    simInitPos,
+		    rqst.value
 		)

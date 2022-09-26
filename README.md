@@ -12,7 +12,7 @@ Full documentation for this example can be found at [https://msfs2020.cc](https:
 
 ## Mobiflight Simconnect events:
 
-Yes this supports the new [SimConnect commands that DocMoebiuz](https://forums.flightsimulator.com/t/full-g1000-control-now-with-mobiflight/348509) of [MobiFlight](https://www.mobiflight.com/en/index.html) developped. 
+Yes this supports the new [SimConnect commands that DocMoebiuz](https://forums.flightsimulator.com/t/full-g1000-control-now-with-mobiflight/348509) of [MobiFlight](https://www.mobiflight.com/en/index.html) developed. 
 A full list of [commands and install instructions](https://pastebin.com/fMdB7at2)
 
 At this time MobiFlight SimConnect commands are not include in the AircraftEvents class and as so the AircraftEvents.find() and AircraftEvents.get() will not work. You will need to pass the Event ID to a new Event class as the Example below shows.
@@ -175,6 +175,12 @@ Python 64-bit is needed. You may see this Error if running 32-bit python:
 
 ```OSError: [WinError 193] %1 is not a valid Win32 application```
 
+Per mracko on COM_RADIO_SET:
+
+    MSFS uses the European COM frequency spacing of 8.33kHz for all default aircraft. 
+    This means that in practice, you increment the frequency by 0.005 MHz and 
+    skip x.x20, x.x45, x.x70, and x.x95 MHz frequencies. 
+    Have a look here http://g3asr.co.uk/calculators/833kHz.htm
 
 
 ## Events and Variables
@@ -185,4 +191,4 @@ Below are links to the Microsoft documentation
 
 [Event IDs](https://docs.microsoft.com/en-us/previous-versions/microsoft-esp/cc526980(v=msdn.10))
 
-[Simulation Variables](https://docs.microsoft.com/en-us/previous-versions/microsoft-esp/cc526981(v=msdn.10))
+[Simulation Variables](https://docs.flightsimulator.com/html/Programming_Tools/SimVars/Simulation_Variables.htm)
